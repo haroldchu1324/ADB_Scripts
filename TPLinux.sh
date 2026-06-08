@@ -1,25 +1,14 @@
 #!/bin/bash
 # ============================================================
-# Script: open_mobileutilities.sh
+# Script: TPLinux.sh
 # Device: Pixel 10 (Android via ADB)
-# Purpose:
-#   1. Opens MobileUtilities app
-#   2. Types "glasses" in the search bar
-#   3. Clicks the result that says "Glasses"
-#   4. Clicks the result that says "Flags"
-#   5. Calls override_flag <number> to override a flag
-# Requirements:
-#   - ADB installed on your computer
-#   - USB Debugging enabled on your Pixel 10
-#   - Device connected via USB (or ADB over Wi-Fi)
-#   - python3 installed on your computer
 # ============================================================
 
 APP_PACKAGE="com.google.android.apps.mobileutilities"
+APK_NAME="mobileutilities_334_alldpi_minSdk21_arm64-v8a_releasekey_mobileutilities.android_20250514_RC00.apk"
 SEARCH_BAR_ID="com.google.android.apps.mobileutilities:id/search_bar"
 CLEAR_BTN_ID="com.google.android.apps.mobileutilities:id/search_close_btn"
 SKIP_IDS="com.google.android.apps.mobileutilities:id/search_src_text,com.google.android.apps.mobileutilities:id/search_bar"
-SETTINGS_SEARCH_ID="com.android.settings:id/search_action_bar"
 
 # ------------------------------------------------------------
 # Helper: tap_by_resource_id <resource_id>
@@ -53,10 +42,8 @@ EOF
 }
 
 # ------------------------------------------------------------
-# Helper: enable_toggle_by_label <label>
-#   Finds a toggle by its nearby label text and only taps it
-#   if it is currently off (checked=false).
-#   Usage: enable_toggle_by_label "Spoken notifications"
+# Helper: enable_toggle_by_label <label> [true|false]
+# ------------------------------------------------------------
 enable_toggle_by_label() {
   local LABEL="$1"
   local DESIRED="${2:-true}"
@@ -72,7 +59,6 @@ desired = sys.argv[2].strip().lower()
 tree = ET.parse("/tmp/ui.xml")
 root = tree.getroot()
 
-# Find the Y center of the label text
 label_y = None
 label_bounds = None
 for node in root.iter("node"):
@@ -87,7 +73,6 @@ if label_y is None:
     print(f"  ERROR: Label '{label}' not found.")
     sys.exit(1)
 
-# Find the toggle on the same row to the right (closest to label)
 label_x2 = int(label_bounds[2])
 best = None
 best_x = float('inf')
@@ -123,7 +108,6 @@ EOF
 
 # ------------------------------------------------------------
 # Helper: tap_by_text <text>
-#   Finds element by visible text, skipping the search bar.
 # ------------------------------------------------------------
 tap_by_text() {
   local TEXT="$1"
@@ -143,7 +127,8 @@ root = tree.getroot()
 for node in root.iter("node"):
     if node.attrib.get("resource-id", "") in skip_ids:
         continue
-    if node.attrib.get("text", "").strip().lower() == search_text.strip().lower():
+    node_text = node.attrib.get("text", "") or node.attrib.get("content-desc", "")
+    if node_text.strip().lower() == search_text.strip().lower():
         bounds = node.attrib.get("bounds")
         coords = bounds.replace("][", ",").strip("[]").split(",")
         x = (int(coords[0]) + int(coords[2])) // 2
@@ -158,68 +143,7 @@ EOF
 }
 
 # ------------------------------------------------------------
-# Helper: tap_by_text <text>
-#   Finds element by visible text, skipping the search bar.
-# ------------------------------------------------------------
-tap_by_text() {
-  local TEXT="$1"
-  adb shell uiautomator dump /sdcard/ui.xml > /dev/null
-  adb pull /sdcard/ui.xml /tmp/ui.xml > /dev/null 2>&1
-
-  python3 - "$TEXT" "$SKIP_IDS" <<'EOF'
-import subprocess, sys
-import xml.etree.ElementTree as ET
-
-search_text = sys.argv[1]
-skip_ids = sys.argv[2].split(",")
-
-tree = ET.parse("/tmp/ui.xml")
-root = tree.getroot()
-
-for node in root.iter("node"):
-    if node.attrib.get("resource-id", "") in skip_ids:
-        continue
-    if node.attrib.get("text", "").strip().lower() == search_text.strip().lower():
-        bounds = node.attrib.get("bounds")
-        coords = bounds.replace("][", ",").strip("[]").split(",")
-        x = (int(coords[0]) + int(coords[2])) // 2
-        y = (int(coords[1]) + int(coords[3])) // 2
-        print(f"  Found '{search_text}' -> tapping ({x}, {y})")
-        subprocess.run(["adb", "shell", "input", "tap", str(x), str(y)], check=True)
-        sys.exit(0)
-
-print(f"  ERROR: No element with text '{search_text}' found.")
-sys.exit(1)
-EOF
-}
-# ------------------------------------------------------------
-# Function: navigate_settings <search_term> <result_text>
-#   Opens Settings, searches for a term, clicks the matching result.
-#   Usage: navigate_settings "notification read" "Notification read, reply & control"
-# ------------------------------------------------------------
-navigate_settings() {
-  local TERM="$1"
-  local RESULT="${2:-$1}"
-  echo "==> Opening Settings..."
-  adb shell am start -a android.settings.SETTINGS > /dev/null
-  sleep 1.5
-
-  echo "==> Tapping Settings search bar..."
-  tap_by_resource_id "$SETTINGS_SEARCH_ID" || return 1
-  sleep 0.5
-
-  echo "==> Typing '$TERM'..."
-  adb shell input text "$TERM"
-  sleep 1
-
-  echo "==> Clicking result '$RESULT'..."
-  tap_by_text "$RESULT" || return 1
-  sleep 1
-}
-# ------------------------------------------------------------
-# Function: go_back <times>
-#   Presses the back button n times.
-#   Usage: go_back 3
+# Helper: go_back <times>
 # ------------------------------------------------------------
 go_back() {
   local TIMES="${1:-1}"
@@ -230,46 +154,7 @@ go_back() {
 }
 
 # ------------------------------------------------------------
-# Function: override_flag <flag_number>
-#   1. Taps the search bar and types the flag number
-#   2. Clicks the 2nd option (the flag result)
-#   3. Clicks "Override Flag"
-#   4. Clicks "Ok"
-#   5. Presses back to return to previous page
-#   6. Taps search bar and clears it
-#
-# Usage: override_flag "45717667"
-# ------------------------------------------------------------
-override_flag() {
-  local FLAG="$1"
-  echo "==> [override_flag] Searching for flag: $FLAG"
-
-  tap_by_resource_id "$SEARCH_BAR_ID" || return 1
-  sleep 0.3
-  adb shell input text "$FLAG"
-  sleep 0.3
-
-  tap_by_text "$FLAG" || return 1
-  sleep 0.3
-
-  tap_by_text "Override Flag" || return 1
-  sleep 0.3
-
-  tap_by_text "Ok" || return 1
-  sleep 0.3
-
-  go_back 
-
-  tap_by_resource_id "$CLEAR_BTN_ID" || return 1
-
-  echo "==> [override_flag] Done with flag: $FLAG"
-}
-
-# ------------------------------------------------------------
-# Function: scroll_until_text <text> <max_scrolls>
-#   Scrolls down until the given text appears on screen.
-#   Usage: scroll_until_text "NotifyMe"
-#          scroll_until_text "NotifyMe" 10
+# Helper: scroll_until_text <text> [max_scrolls]
 # ------------------------------------------------------------
 scroll_until_text() {
   local TEXT="$1"
@@ -303,33 +188,79 @@ for node in tree.getroot().iter('node'):
 
   if [ $FOUND -eq 0 ]; then
     echo "  ERROR: '$TEXT' not found after $MAX scrolls."
-    return 0.3
+    return 1
   fi
 }
 
 # ------------------------------------------------------------
-# Function: clear_all_apps
-#   Opens recents, swipes to the leftmost screen, taps Clear all
+# Function: install_mobile_utilities
+#   Installs Mobile Utilities APK if not already installed.
+#   Looks for the APK in the same directory as this script.
 # ------------------------------------------------------------
-clear_all_apps() {
-  echo "==> Clearing all recent apps..."
-  adb shell input keyevent KEYCODE_APP_SWITCH
-  sleep 1
+install_mobile_utilities() {
+  echo "==> Checking if Mobile Utilities is already installed..."
+  INSTALLED=$(adb shell pm list packages | grep "$APP_PACKAGE")
+  if [ -n "$INSTALLED" ]; then
+    echo "  Mobile Utilities is already installed, skipping."
+    return 0
+  fi
 
-  # Swipe left multiple times to get to the leftmost screen
-  for ((i=1; i<=3; i++)); do
-    adb shell input swipe 200 1000 900 1000 100
-    sleep 0.5
-  done
+  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  APK_PATH="$SCRIPT_DIR/$APK_NAME"
 
-  sleep 1
-  tap_by_text "Clear all"
-  echo "==> All apps cleared."
+  if [ ! -f "$APK_PATH" ]; then
+    echo "  ERROR: APK not found at $APK_PATH"
+    echo "  Please download the APK and place it next to this script:"
+    echo "    $APK_NAME"
+    exit 1
+  fi
+
+  echo "==> Installing Mobile Utilities from $APK_PATH ..."
+  adb install -r -d -g "$APK_PATH"
+  if [ $? -ne 0 ]; then
+    echo "  ERROR: Installation failed."
+    exit 1
+  fi
+  echo "  Mobile Utilities installed successfully."
 }
+
+# ------------------------------------------------------------
+# Function: dismiss_google_account_dialog
+#   After launching the app, a "Mobile Utilities wants access
+#   to your Google account" dialog may appear. Scrolls down
+#   and taps "Continue" if found, skips silently if not.
+# ------------------------------------------------------------
+dismiss_google_account_dialog() {
+  echo "==> Checking for Google account permission dialog..."
+  adb shell uiautomator dump /sdcard/ui.xml > /dev/null
+  adb pull /sdcard/ui.xml /tmp/ui.xml > /dev/null 2>&1
+
+  FOUND=$(python3 -c "
+import xml.etree.ElementTree as ET
+tree = ET.parse('/tmp/ui.xml')
+for node in tree.getroot().iter('node'):
+    if 'wants access to your google account' in node.attrib.get('text', '').lower():
+        print('found')
+        break
+")
+
+  if [ "$FOUND" != "found" ]; then
+    echo "  No permission dialog found, skipping."
+    return 0
+  fi
+
+  echo "  Dialog found. Scrolling down to reveal Continue button..."
+  adb shell input swipe 540 1200 540 600 300
+  sleep 0.5
+
+  echo "  Tapping 'Continue'..."
+  tap_by_text "Continue" || return 1
+  sleep 1
+}
+
 # ============================================================
 # MAIN FLOW
 # ============================================================
-
 
 echo "==> Checking ADB connection..."
 DEVICE_STATUS=$(adb get-state 2>&1)
@@ -340,95 +271,99 @@ if [ "$DEVICE_STATUS" != "device" ]; then
   exit 1
 fi
 
-clear_all_apps
-sleep 1
+install_mobile_utilities
 
-echo "==> Launching MobileUtilities..."
+echo "==> Launching Mobile Utilities..."
 adb shell monkey -p "$APP_PACKAGE" -c android.intent.category.LAUNCHER 1 > /dev/null
-sleep 1.0
+sleep 2
+
+dismiss_google_account_dialog
 
 echo "==> Tapping search bar..."
 tap_by_resource_id "$SEARCH_BAR_ID" || exit 1
 sleep 0.5
 
-# --- Starting Glasses ---
-
-echo "==> Typing 'glasses'..."
-adb shell input text "glasses"
-sleep 0.3
-
-echo "==> Clicking result 'Glasses'..."
-tap_by_text "Glasses Core" || exit 1
-sleep 0.3
-
-echo "==> Clicking result 'Flags'..."
-tap_by_text "Flags" || exit 1
-sleep 0.3
-
-override_flag "45723960"
-
-override_flag "45749703"
-
-sleep 0.3
-go_back 4
-
-# --- Starting Glasses Core ---
-
-echo "==> Clicking result 'Glasses Core'..."
-tap_by_text "Glasses Core" || exit 1
-sleep 0.3
-
-echo "==> Clicking result 'Flags'..."
-tap_by_text "Flags" || exit 1
-sleep 0.3
-
-override_flag "45717667"
-
-override_flag "45750047"
-
-override_flag "45760770"
-
-override_flag "45769248"
-
-sleep 0.3
-
-echo "==> Navigating to home screen..."
-adb shell input keyevent KEYCODE_HOME
+echo "==> Typing 'Glasses Core'..."
+adb shell input text "Glasses%sCore"
 sleep 0.5
 
-echo "==> Force stopping Glasses Core..."
-adb shell am force-stop com.google.android.glasses.core
-sleep 1
+echo "==> Clicking 'Glasses Core'..."
+tap_by_text "Glasses Core" || exit 1
+sleep 0.5
 
-adb shell monkey -p com.google.android.glasses.companion -c android.intent.category.LAUNCHER 1
-sleep 1
+echo "==> Clicking 'Flags'..."
+tap_by_text "Flags" || exit 1
+sleep 0.5
 
-echo "==> Navigating to home screen..."
-adb shell input keyevent KEYCODE_HOME
-sleep 1
+echo "==> Typing flag 45723960 in search bar..."
+tap_by_resource_id "$SEARCH_BAR_ID" || exit 1
+sleep 0.3
+adb shell input text "45723960"
+sleep 0.5
 
-adb shell monkey -p com.google.android.glasses.companion -c android.intent.category.LAUNCHER 1
-sleep 1
-
-adb shell input swipe 500 600 500 800 300
+echo "==> Clicking flag result '45723960'..."
+tap_by_text "45723960" || exit 1
 sleep 2
 
-tap_by_text "Notifications" || exit 1
-sleep 1
+echo "==> Clicking '✏️ OVERRIDE FLAG'..."
+tap_by_text "✏️ OVERRIDE FLAG" || exit 1
+sleep 0.5
 
-enable_toggle_by_label "Spoken notifications" true   # turns it on
-sleep 1
+echo "==> Checking current flag value..."
+adb shell uiautomator dump /sdcard/ui.xml > /dev/null
+adb pull /sdcard/ui.xml /tmp/ui.xml > /dev/null 2>&1
 
-tap_by_text "All" || exit 1
-sleep 1
+CURRENT_VALUE=$(python3 -c "
+import xml.etree.ElementTree as ET
+tree = ET.parse('/tmp/ui.xml')
+for node in tree.getroot().iter('node'):
+    if node.attrib.get('text', '').strip().lower() == 'true':
+        print('true')
+        break
+")
 
-enable_toggle_by_label "Allow all" true
-sleep 1
+if [ "$CURRENT_VALUE" = "true" ]; then
+  echo "  Value is 'true', switching to 'false'..."
+  tap_by_text "true" || exit 1
+  sleep 0.5
+  tap_by_text "false" || exit 1
+  sleep 0.5
+else
+  echo "  Value is already 'false', skipping dropdown."
+fi
 
-scroll_until_text "NotifyMe"
-sleep 1
+echo "==> Clicking 'Ok'..."
+tap_by_text "Ok" || exit 1
+sleep 0.5
 
+echo "==> Going back to flags search page..."
+go_back 1
+sleep 0.5
 
+echo "==> Clearing search bar and typing 45749703..."
+tap_by_resource_id "$CLEAR_BTN_ID" || exit 1
+sleep 0.3
+adb shell input text "45749703"
+sleep 0.5
 
-echo "✅ ✅ ✅ ✅ ✅ ==> All done! ✅ ✅ ✅ ✅ ✅ "
-echo "✅ ✅ ✅ ✅ ✅ ==> All done! ✅ ✅ ✅ ✅ ✅ "
+echo "==> Clicking flag result '45749703'..."
+tap_by_text "45749703" || exit 1
+sleep 2
+
+echo "==> Clicking '✏️ OVERRIDE FLAG'..."
+tap_by_text "✏️ OVERRIDE FLAG" || exit 1
+sleep 0.5
+
+echo "==> Tapping value input and typing 0..."
+tap_by_resource_id "com.google.android.apps.mobileutilities:id/uncommitted_flag_value" || exit 1
+sleep 0.3
+adb shell input keyevent KEYCODE_CTRL_A
+sleep 0.2
+adb shell input text "0"
+sleep 0.3
+
+echo "==> Clicking 'Ok'..."
+tap_by_text "Ok" || exit 1
+sleep 0.5
+
+echo "Done."
