@@ -386,7 +386,7 @@ sleep 0.5
 
 echo "==> Clicking flag result '45749703'..."
 tap_by_text_partial "45749703" || exit 1
-sleep 2
+sleep 0.5
 
 echo "==> Clicking '✏️ OVERRIDE FLAG'..."
 tap_by_text "✏️ OVERRIDE FLAG" || exit 1
