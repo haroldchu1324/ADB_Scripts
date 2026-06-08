@@ -168,7 +168,7 @@ for node in tree.getroot().iter('node'):
     fi
 
     echo "  Not found yet, scrolling ($i/$MAX)..."
-    adb shell input swipe 540 1200 540 200 200
+    adb shell input swipe 540 1200 540 800 800
     sleep 0.3
   done
 
