@@ -449,4 +449,16 @@ echo "==> Clicking 'OK'..."
 tap_by_text "OK" || exit 1
 sleep 0.5
 
+echo "==> Opening Glasses Core app info..."
+adb shell am start -a android.settings.APPLICATION_DETAILS_SETTINGS -d package:com.google.android.glasses.core > /dev/null
+sleep 1.5
+
+echo "==> Force stopping Glasses Core..."
+adb shell am force-stop com.google.android.glasses.core
+sleep 1
+
+echo "==> Tapping 'Additional settings in the app'..."
+tap_by_text "Additional settings in the app" || exit 1
+sleep 1
+
 echo "Done."
