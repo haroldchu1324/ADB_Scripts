@@ -140,6 +140,17 @@ EOF
 }
 
 # ------------------------------------------------------------
+# Helper: go_back <times>
+# ------------------------------------------------------------
+go_back() {
+  local TIMES="${1:-1}"
+  for ((i=1; i<=TIMES; i++)); do
+    adb shell input keyevent KEYCODE_BACK
+    sleep 0.3
+  done
+}
+
+# ------------------------------------------------------------
 # Helper: scroll_until_text <text> [max_scrolls]
 # ------------------------------------------------------------
 scroll_until_text() {
@@ -168,7 +179,7 @@ for node in tree.getroot().iter('node'):
     fi
 
     echo "  Not found yet, scrolling ($i/$MAX)..."
-    adb shell input swipe 540 1200 540 700 500
+    adb shell input swipe 540 1200 540 700 350
     sleep 0.3
   done
 
@@ -216,5 +227,21 @@ sleep 0.5
 echo "==> Unchecking 'Enable automatic snooze timeout'..."
 enable_toggle_by_label "Enable automatic snooze timeout" false
 sleep 0.5
+
+echo "==> Going back to Developer Settings..."
+go_back 1
+sleep 1
+
+echo "==> Tapping 'Apps'..."
+tap_by_text "Apps" || exit 1
+sleep 1
+
+echo "==> Unchecking 'Auto-launch System UI'..."
+enable_toggle_by_label "Auto-launch System UI" false
+sleep 0.5
+
+echo "==> Force stopping Glasses Core..."
+adb shell am force-stop com.google.android.glasses.core
+sleep 1
 
 echo "Done."
