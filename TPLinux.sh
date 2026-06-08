@@ -422,11 +422,28 @@ echo "==> Clicking '✏️ OVERRIDE FLAG'..."
 tap_by_text "✏️ OVERRIDE FLAG" || exit 1
 sleep 0.5
 
-echo "==> Selecting 'false' from dropdown..."
-tap_by_text "true" || tap_by_text "false" || exit 1
-sleep 0.5
-tap_by_text "false" || exit 1
-sleep 0.5
+echo "==> Checking current flag value..."
+adb shell uiautomator dump /sdcard/ui.xml > /dev/null
+adb pull /sdcard/ui.xml /tmp/ui.xml > /dev/null 2>&1
+
+CURRENT_VALUE=$(python3 -c "
+import xml.etree.ElementTree as ET
+tree = ET.parse('/tmp/ui.xml')
+for node in tree.getroot().iter('node'):
+    if node.attrib.get('text', '').strip().lower() == 'false':
+        print('false')
+        break
+")
+
+if [ "$CURRENT_VALUE" = "false" ]; then
+  echo "  Value is 'false', switching to 'true'..."
+  tap_by_text "false" || exit 1
+  sleep 0.5
+  tap_by_text "true" || exit 1
+  sleep 0.5
+else
+  echo "  Value is already 'true', skipping dropdown."
+fi
 
 echo "==> Clicking 'OK'..."
 tap_by_text "OK" || exit 1
