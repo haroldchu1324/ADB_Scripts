@@ -395,7 +395,7 @@ sleep 0.5
 echo "==> Tapping value input and typing 0..."
 tap_by_resource_id "com.google.android.apps.mobileutilities:id/override_value_long" || exit 1
 sleep 0.3
-adb shell input keycombination META_CTRL_ON KEYCODE_A
+adb shell input keycombination KEYCODE_CTRL_LEFT KEYCODE_A
 sleep 0.2
 adb shell input text "0"
 sleep 0.3
