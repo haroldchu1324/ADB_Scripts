@@ -404,4 +404,32 @@ echo "==> Clicking 'OK'..."
 tap_by_text "OK" || exit 1
 sleep 0.5
 
+echo "==> Going back to flags search page..."
+go_back 1
+sleep 0.5
+
+echo "==> Clearing search bar and typing 45752201..."
+tap_by_resource_id "$CLEAR_BTN_ID" || exit 1
+sleep 0.3
+adb shell input text "45752201"
+sleep 0.5
+
+echo "==> Clicking flag result '45752201'..."
+tap_by_text_partial "45752201" || exit 1
+sleep 2
+
+echo "==> Clicking '✏️ OVERRIDE FLAG'..."
+tap_by_text "✏️ OVERRIDE FLAG" || exit 1
+sleep 0.5
+
+echo "==> Selecting 'false' from dropdown..."
+tap_by_text "true" || tap_by_text "false" || exit 1
+sleep 0.5
+tap_by_text "false" || exit 1
+sleep 0.5
+
+echo "==> Clicking 'OK'..."
+tap_by_text "OK" || exit 1
+sleep 0.5
+
 echo "Done."
