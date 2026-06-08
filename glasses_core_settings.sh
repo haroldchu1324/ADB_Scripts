@@ -64,6 +64,10 @@ sleep 1
 
 echo "==> Tapping 'Additional settings in the app'..."
 tap_by_text "Additional settings in the app" || exit 1
+sleep 1.5
+
+echo "==> Tapping gear icon (Developer Settings)..."
+tap_by_resource_id "com.google.android.glasses.core:id/menu_item_settings" || exit 1
 sleep 1
 
 echo "Done."
