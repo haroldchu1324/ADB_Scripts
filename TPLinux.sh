@@ -143,6 +143,44 @@ EOF
 }
 
 # ------------------------------------------------------------
+# Helper: tap_by_text_partial <text>
+#   Finds element whose text contains the given string (case-insensitive),
+#   skipping the search bar.
+# ------------------------------------------------------------
+tap_by_text_partial() {
+  local TEXT="$1"
+  adb shell uiautomator dump /sdcard/ui.xml > /dev/null
+  adb pull /sdcard/ui.xml /tmp/ui.xml > /dev/null 2>&1
+
+  python3 - "$TEXT" "$SKIP_IDS" <<'EOF'
+import subprocess, sys
+import xml.etree.ElementTree as ET
+
+search_text = sys.argv[1].strip().lower()
+skip_ids = sys.argv[2].split(",")
+
+tree = ET.parse("/tmp/ui.xml")
+root = tree.getroot()
+
+for node in root.iter("node"):
+    if node.attrib.get("resource-id", "") in skip_ids:
+        continue
+    node_text = node.attrib.get("text", "") or node.attrib.get("content-desc", "")
+    if search_text in node_text.strip().lower():
+        bounds = node.attrib.get("bounds")
+        coords = bounds.replace("][", ",").strip("[]").split(",")
+        x = (int(coords[0]) + int(coords[2])) // 2
+        y = (int(coords[1]) + int(coords[3])) // 2
+        print(f"  Found (partial) '{search_text}' -> tapping ({x}, {y})")
+        subprocess.run(["adb", "shell", "input", "tap", str(x), str(y)], check=True)
+        sys.exit(0)
+
+print(f"  ERROR: No element containing '{search_text}' found.")
+sys.exit(1)
+EOF
+}
+
+# ------------------------------------------------------------
 # Helper: go_back <times>
 # ------------------------------------------------------------
 go_back() {
@@ -302,7 +340,7 @@ adb shell input text "45723960"
 sleep 0.5
 
 echo "==> Clicking flag result '45723960'..."
-tap_by_text "45723960" || exit 1
+tap_by_text_partial "45723960" || exit 1
 sleep 2
 
 echo "==> Clicking '✏️ OVERRIDE FLAG'..."
@@ -347,7 +385,7 @@ adb shell input text "45749703"
 sleep 0.5
 
 echo "==> Clicking flag result '45749703'..."
-tap_by_text "45749703" || exit 1
+tap_by_text_partial "45749703" || exit 1
 sleep 2
 
 echo "==> Clicking '✏️ OVERRIDE FLAG'..."
