@@ -371,7 +371,7 @@ else
 fi
 
 echo "==> Clicking 'Ok'..."
-tap_by_text "Ok" || exit 1
+tap_by_text "OK" || exit 1
 sleep 0.5
 
 echo "==> Going back to flags search page..."
@@ -393,15 +393,15 @@ tap_by_text "✏️ OVERRIDE FLAG" || exit 1
 sleep 0.5
 
 echo "==> Tapping value input and typing 0..."
-tap_by_resource_id "com.google.android.apps.mobileutilities:id/uncommitted_flag_value" || exit 1
+tap_by_resource_id "com.google.android.apps.mobileutilities:id/override_value_long" || exit 1
 sleep 0.3
 adb shell input keyevent KEYCODE_CTRL_A
 sleep 0.2
 adb shell input text "0"
 sleep 0.3
 
-echo "==> Clicking 'Ok'..."
-tap_by_text "Ok" || exit 1
+echo "==> Clicking 'OK'..."
+tap_by_text "OK" || exit 1
 sleep 0.5
 
 echo "Done."
