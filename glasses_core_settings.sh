@@ -248,4 +248,10 @@ echo "==> Force stopping Glasses Core..."
 adb shell am force-stop com.google.android.glasses.core
 sleep 1
 
-echo "Done."
+echo "==> Setting persist.debug.sysui.glasses.play_invoke_ai_earcon_on_touch_and_hold..."
+adb shell setprop persist.debug.sysui.glasses.play_invoke_ai_earcon_on_touch_and_hold true
+sleep 0.5
+
+echo "✅ ✅ ✅ ✅ ✅ ==> All done! ✅ ✅ ✅ ✅ ✅"
+echo "✅ ✅ ✅ ✅ ✅ ==> All done! ✅ ✅ ✅ ✅ ✅"
+echo "✅ ✅ ✅ ✅ ✅ ==> All done! ✅ ✅ ✅ ✅ ✅"

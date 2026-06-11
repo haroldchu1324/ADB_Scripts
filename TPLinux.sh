@@ -449,4 +449,6 @@ echo "==> Clicking 'OK'..."
 tap_by_text "OK" || exit 1
 sleep 0.5
 
-echo "Done."
+echo "✅ ✅ ✅ ✅ ✅ ==> All done! ✅ ✅ ✅ ✅ ✅"
+echo "✅ ✅ ✅ ✅ ✅ ==> All done! ✅ ✅ ✅ ✅ ✅"
+echo "✅ ✅ ✅ ✅ ✅ ==> All done! ✅ ✅ ✅ ✅ ✅"
