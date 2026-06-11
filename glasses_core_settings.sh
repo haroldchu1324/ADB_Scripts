@@ -213,7 +213,11 @@ tap_by_text "Additional settings in the app" || exit 1
 sleep 3
 
 echo "==> Tapping gear icon (Developer Settings)..."
-tap_by_resource_id "com.google.android.glasses.core:id/menu_item_settings" || exit 1
+for i in 1 2 3; do
+  tap_by_resource_id "com.google.android.glasses.core:id/menu_item_settings" && break
+  echo "  Retrying in 1s (attempt $i)..."
+  sleep 1
+done || exit 1
 sleep 1
 
 echo "==> Tapping 'Display'..."
